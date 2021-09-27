@@ -22,8 +22,8 @@
 ++  on-init
   ^-  (quip card _this)
   ~&  >  'invoicer initialization success'
-=.  state  [%0 555 (my ~[[[1 ~hatsyx-possum] 1] [[2 ~hatsyx-possum] 2] [[3 ~hatsyx-possum] 3]]) ~dolled-possum]
-::  =.  state  [%0 555 999 ~dolled-possum]
+::  =.  state  [%0 555 (my ~[[[1 ~hatsyx-possum] ["widgets" %unpaid]] [[2 ~hatsyx-possum] ["gadgets" %prepaid]] [[3 ~hatsyx-possum] ["fidgets" %paid]]]) ~dolled-possum]
+=.  state  [%0 555 (my ~[[[1 ~hatsyx-possum] ["widgets" %issued now.bowl now.bowl .1.25 %usd]]]) (my ~[[[1 ~hatsyx-possum] ["gadgets" %overdue now.bowl now.bowl .1.75 %usd]]])]
   `this
 ++  on-save
   ^-  vase
@@ -36,8 +36,8 @@
   =/  prev  [%0 old-state]
   ?-  -.prev
     %0
-  =.  state  [%0 444 (my ~[[[1 ~hatsyx-possum] 11] [[2 ~hatsyx-possum] 22] [[3 ~hatsyx-possum] 33]]) ~dolled-possum]
-  ::  =.  state  [%0 444 888 ~dolled-possum]
+::  =.  state  [%0 444 (my ~[[[1 ~hatsyx-possum] ["wudgets" %unpaid]] [[2 ~hatsyx-possum] ["gudgets" %prepaid]] [[3 ~hatsyx-possum] ["fudgets" %paid]]]) ~dolled-possum]
+  =.  state  [%0 555 (my ~[[[1 ~hatsyx-possum] ["fidgets" %issued now.bowl now.bowl .1.35 %usd]]]) (my ~[[[1 ~hatsyx-possum] ["bridgets" %overdue now.bowl now.bowl .1.85 %usd]]])]
     `this
   ==
 ++  on-poke
@@ -84,12 +84,12 @@
       %add-invoice
     ~&  >  'inside helperc, %add-invoice'
     ::  =.  invoices.state  [newinvoice.action invoices.state]
-    =.  invoices.state  (~(put by invoices.state) [newkey.action newvalue.action])
+    =.  sentinvoices.state  (~(put by sentinvoices.state) [newkey.action newvalue.action])
     :_  state
     ~
       %retrieve-invoice
     ~&  >  'inside helperc, %retrieve-invoice'
-    ~&  >>  (~(got by invoices.state) existingkey.action)
+    ~&  >>  (~(got by sentinvoices.state) existingkey.action)
     :_  state
     ~
     ==
