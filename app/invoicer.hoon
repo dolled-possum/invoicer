@@ -35,7 +35,7 @@
 ++  on-init
   ^-  (quip card _this)
   ~&  >  'invoicer initialization success'
-  =.  state  [%0 1.000 (my ~[[[999 ~hatsyx-possum] ["widgets" %issued now.bowl now.bowl .1.25 %usd]]]) (my ~[[[999 ~hatsyx-possum] ["gadgets" %overdue now.bowl now.bowl .1.75 %usd]]])]
+  =.  state  [%0 1.000 (my ~[[999 ~hatsyx-possum "widgets" %issued now.bowl now.bowl .1.25 %usd]]) (my ~[[[999 ~hatsyx-possum] ["gadgets" %overdue now.bowl now.bowl .1.75 %usd]]])]
   `this
 ::
 ::  How the vase is obtained for the being-replaced-version of the app code
@@ -58,7 +58,7 @@
   =/  prev  !<(versioned-state old-state)
   ?-  -.prev
     %0
-  =.  state  [%0 1.000 (my ~[[[999 ~hatsyx-possum] ["fidgets" %issued now.bowl now.bowl .1.35 %usd]]]) (my ~[[[999 ~hatsyx-possum] ["zidgets" %overdue now.bowl now.bowl .1.85 %usd]]])]
+  =.  state  [%0 1.000 (my ~[[999 ~hatsyx-possum "fidgets" %issued now.bowl now.bowl .1.35 %usd]]) (my ~[[[999 ~hatsyx-possum] ["zidgets" %overdue now.bowl now.bowl .1.85 %usd]]])]
     `this
   ==
 ::
@@ -110,12 +110,14 @@
       %set-nextinvoicenumber
     ?>  (team:title our.bowl src.bowl)
     ~&  >  'inside helperc, %set-nextinvoicenumber'
+    ::  Test to ensure the key doesn't already exist, as you can't create an invoice with a duplicate number.
+    ?<  (~(has by invoicesivesent.state) newnumber.action)    
     =.  nextinvoicenumber.state  newnumber.action
     :_  state
     ~
   ::
-  ::  This action creates an invoice in your own sentinvoices, and also pokes
-  ::  a corresponding one in the target ship's receivedinvoicecopies.  And for
+  ::  This action creates an invoice in your own invoicesivesent, and also pokes
+  ::  a corresponding one in the target ship's invoicesivereceived.  And for
   ::  good measure, it increments the nextinvoicenumber counter.
   ::
   ::  dojo example: > :invoicer &invoicer-action [%create-invoice ~zod "kerosene" %issued now now .9.35 %usd]
@@ -124,35 +126,37 @@
     ~&  >  'inside helperc, %create-invoice'
     =/  originalcounter  nextinvoicenumber.state
     ::  Test to ensure the key doesn't already exist, don't want to overwrite anything.
-    ?<  (~(has by sentinvoices.state) [originalcounter recipientkeyship.action])
-    =.  sentinvoices.state  (~(put by sentinvoices.state) [[originalcounter recipientkeyship.action] newinvoice.action])
+    ?<  (~(has by invoicesivesent.state) originalcounter)
+    =.  invoicesivesent.state  (~(put by invoicesivesent.state) [originalcounter recipientkeyship.action newinvoice.action])
     =.  nextinvoicenumber.state  +(originalcounter)
     :_  state
     ~[[%pass /invoice-wire %agent [recipientkeyship.action %invoicer] %poke %invoicer-action !>([%upsert-invoice-copy originalcounter newinvoice.action])]]
   ::
   ::  If a ship needs to update an existing invoice it's sent, this is the
   ::  action.  By specifying the key and the new version of the invoice, it'll
-  ::  update it in your own sentinvoices, and also poke it in the target
-  ::  ship's receivedinvoicecopies.
+  ::  update it in your own invoicesivesent, and also poke it in the target
+  ::  ship's invoicesivereceived.
   ::
-  ::  dojo example: > :invoicer &invoicer-action [%update-invoice [999 ~hatsyx-possum] "fudgets" %issued now now .9.35 %usd]
+  ::  dojo example: > :invoicer &invoicer-action [%update-invoice 999 "fudgets" %issued now now .9.35 %usd]
       %update-invoice
     ?>  (team:title our.bowl src.bowl)
     ~&  >  'inside helperc, %update-invoice'
     ::  Test to ensure the key does already exist, don't want to create anything new.
-    ?>  (~(has by sentinvoices.state) [num.existingkey.action ship.existingkey.action])
-    =.  sentinvoices.state  (~(put by sentinvoices.state) [[num.existingkey.action ship.existingkey.action] newinvoice.action])
+    ?>  (~(has by invoicesivesent.state) existingkeynum.action)
+    =/  retrievedinvoiceplusrecipient=invoiceplusrecipient.inb  (~(got by invoicesivesent.state) existingkeynum.action)
+    =/  targetship=@p  recipient.retrievedinvoiceplusrecipient
+    =.  invoicesivesent.state  (~(put by invoicesivesent.state) [existingkeynum.action targetship newinvoice.action])
     :_  state
-    ~[[%pass /invoice-wire %agent [ship.existingkey.action %invoicer] %poke %invoicer-action !>([%upsert-invoice-copy num.existingkey.action newinvoice.action])]]
+    ~[[%pass /invoice-wire %agent [targetship %invoicer] %poke %invoicer-action !>([%upsert-invoice-copy existingkeynum.action newinvoice.action])]]
   ::
   ::  Here's the action that gets remotely poked to make a corresponding entry
-  ::  in receivedinvoicecopies when a sending ship creates or updates an
+  ::  in invoicesivereceived when a sending ship creates or updates an
   ::  invoice delivered to this ship.
   ::
   ::  Don't run this from the dojo.  It's meant to be poked remotely via card.
       %upsert-invoice-copy
     ~&  >  'inside helperc, %upsert-invoice-copy'
-    =.  receivedinvoicecopies.state  (~(put by receivedinvoicecopies.state) [[sendingkeynum.action src.bowl] newinvoice.action])
+    =.  invoicesivereceived.state  (~(put by invoicesivereceived.state) [[sendingkeynum.action src.bowl] newinvoice.action])
     :_  state
     ~[[%pass /upsertack-wire %agent [src.bowl %invoicer] %poke %invoicer-action !>([%upsert-ack sendingkeynum.action])]]
   ::
@@ -172,40 +176,37 @@
   ::  or the map of invoices you've received.  This really needs sort, filter,
   ::  and pagination capabilities.  #TODO Add them.
   ::
-  ::  dojo example: > :invoicer &invoicer-action [%retrieve-invoice [%sent 999 ~hatsyx-possum]]
-      %retrieve-invoice
+  ::  dojo example: > :invoicer &invoicer-action [%retrieve-invoice-from-sent 999]
+      %retrieve-invoice-from-sent 
     ?>  (team:title our.bowl src.bowl)
-    ~&  >  'inside helperc, %retrieve-invoice'
-    =/  searchinvoices  
-      ?-  store.existingkey.action
-        %sent  sentinvoices.state
-        %received  receivedinvoicecopies.state
-      ==
-    ~&  >>  (~(got by searchinvoices) [num.existingkey.action ship.existingkey.action])
+    ~&  >  'inside helperc, %retrieve-invoice-from-sent'
+    ~&  >>  (~(got by invoicesivesent.state) existingkeynum.action)
+    :_  state
+    ~
+  ::  dojo example: > :invoicer &invoicer-action [%retrieve-invoice-from-received 999 ~hatsyx-possum]
+      %retrieve-invoice-from-received 
+    ?>  (team:title our.bowl src.bowl)
+    ~&  >  'inside helperc, %retrieve-invoice-from-received'
+    ~&  >>  (~(got by invoicesivereceived.state) [existingkeynum.action existingkeyship.action])
     :_  state
     ~
   ::
   ::  Deleting an invoice by key from either the map of invoices you've sent
   ::  or the map of invoices you've received.
   ::
-  ::  dojo example: > :invoicer &invoicer-action [%unsafe-delete-invoice [%sent 999 ~hatsyx-possum]]
-      %unsafe-delete-invoice
+  ::  dojo example: > :invoicer &invoicer-action [%unsafe-delete-invoice-from-sent 999]
+      %unsafe-delete-invoice-from-sent
     ?>  (team:title our.bowl src.bowl)
-    ~&  >  'inside helperc, %unsafe-delete-invoice'
-    ::  This will be replaced with an archive command I expect.  Also, there
-    ::  has to be a way to avoid the duplicate code, but I'm missing it.
-    ::  #TODO Find it.  And do the soft delete thing.
-    ?-  store.existingkey.action
-      %sent  
-        =/  newmap  (~(del by sentinvoices.state) [num.existingkey.action ship.existingkey.action])
-        =.  sentinvoices.state  newmap
-        :_  state
-        ~
-      %received  
-        =/  newmap  (~(del by receivedinvoicecopies.state) [num.existingkey.action ship.existingkey.action])
-        =.  receivedinvoicecopies.state  newmap
-        :_  state
-        ~
-       ==
-    ==
+    ~&  >  'inside helperc, %unsafe-delete-invoice-from-sent'
+    =.  invoicesivesent.state  (~(del by invoicesivesent.state) existingkeynum.action)
+    :_  state
+    ~
+  ::  dojo example: > :invoicer &invoicer-action [%unsafe-delete-invoice-from-received 999 ~hatsyx-possum]
+      %unsafe-delete-invoice-from-received
+    ?>  (team:title our.bowl src.bowl)
+    ~&  >  'inside helperc, %unsafe-delete-invoice-from-received'
+    =.  invoicesivereceived.state  (~(del by invoicesivereceived.state) [existingkeynum.action existingkeyship.action])
+    :_  state
+    ~
+  ==
 --
