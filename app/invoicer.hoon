@@ -75,22 +75,61 @@
     :_  state
     ~
     ::
-      %send-invoice
-    ~&  >  'inside helperc, %send-invoice'
-    :_  state
+    ::  %send-invoice
+    :: ~&  >  'inside helperc, %send-invoice'
+    :: :_  state
     ::  ~[[%pass /invoice-wire %agent [receiver.action %invoicer] %poke %invoicer-action !>([%add-invoice inv.action])]]
+    :: ~
+    ::
+    ::  %add-invoice
+    ::~&  >  'inside helperc, %add-invoice'
+    ::  =.  invoices.state  [newinvoice.action invoices.state]
+    ::=.  sentinvoices.state  (~(put by sentinvoices.state) [newkey.action newvalue.action])
+    :::_  state
+    ::~
+      %create-invoice
+    ~&  >  'inside helperc, %create-invoice'
+    =/  originalcounter  nextinvoicenumber.state
+    ~&  >  originalcounter
+    ~&  >  existingkeyship.action
+    ?<  (~(has by sentinvoices.state) [originalcounter existingkeyship.action])
+    =.  sentinvoices.state  (~(put by sentinvoices.state) [[originalcounter existingkeyship.action] newinvoice.action])
+    =.  nextinvoicenumber.state  +(originalcounter)
+    :_  state
     ~
     ::
-      %add-invoice
-    ~&  >  'inside helperc, %add-invoice'
-    ::  =.  invoices.state  [newinvoice.action invoices.state]
-    =.  sentinvoices.state  (~(put by sentinvoices.state) [newkey.action newvalue.action])
+      %update-invoice
+    ~&  >  'inside helperc, %update-invoice'
+    ?>  (~(has by sentinvoices.state) [num.existingkey.action ship.existingkey.action])
+    =.  sentinvoices.state  (~(put by sentinvoices.state) [[num.existingkey.action ship.existingkey.action] newinvoice.action])
     :_  state
     ~
+    ::
       %retrieve-invoice
     ~&  >  'inside helperc, %retrieve-invoice'
-    ~&  >>  (~(got by sentinvoices.state) existingkey.action)
+    =/  searchinvoices  
+      ?-  store.existingkey.action
+        %sent  sentinvoices.state
+        %received  receivedinvoicecopies.state
+      ==
+    ~&  >>  (~(got by searchinvoices) [num.existingkey.action ship.existingkey.action])
     :_  state
     ~
+    ::
+      %unsafe-delete-invoice
+    ~&  >  'inside helperc, %unsafe-delete-invoice'
+    ::  this will be replaced with an archive command I expect
+    ?-  store.existingkey.action
+      %sent  
+        =/  newmap  (~(del by sentinvoices.state) [num.existingkey.action ship.existingkey.action])
+        =.  sentinvoices.state  newmap
+        :_  state
+        ~
+      %received  
+        =/  newmap  (~(del by receivedinvoicecopies.state) [num.existingkey.action ship.existingkey.action])
+        =.  receivedinvoicecopies.state  newmap
+        :_  state
+        ~
+       ==
     ==
 --
