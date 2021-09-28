@@ -154,6 +154,18 @@
     ~&  >  'inside helperc, %upsert-invoice-copy'
     =.  receivedinvoicecopies.state  (~(put by receivedinvoicecopies.state) [[sendingkeynum.action src.bowl] newinvoice.action])
     :_  state
+    ~[[%pass /upsertack-wire %agent [src.bowl %invoicer] %poke %invoicer-action !>([%upsert-ack sendingkeynum.action])]]
+  ::
+  ::  This action processes a manual poke acknowledgment that the ship that 
+  ::  received the invoice creation or update did in fact receive it.
+  ::  Ultimately, this can/will be used to update the status or an ack flag on
+  ::  the canonical copy of the invoice.
+  ::
+  ::  Don't run this from the dojo.  It's meant to be poked remotely via card.
+      %upsert-ack
+    ~&  >  'inside helperc, %upsert-ack'
+    ~&  >  "invoice {<invoicenum.action>} acknowledged by {<src.bowl>}"
+    :_  state
     ~
   ::
   ::  Retrieving an invoice by key from either the map of invoices you've sent
