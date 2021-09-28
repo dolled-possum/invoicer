@@ -55,11 +55,7 @@
   |=  old-state=vase
   ^-  (quip card _this)
   ~&  >  'invoicer recompilation success'
-::  #TODO See if I can figure out why this was giving me problems.  I'll need
-::  handle this once there are new versions of the state!  But this just
-::  hardcodes the knowledge that %0 is the only version there is.
-::  =/  prev  !<(versioned-state old-state)  ::  This is the line that broke.
-  =/  prev  [%0 old-state]
+  =/  prev  !<(versioned-state old-state)
   ?-  -.prev
     %0
   =.  state  [%0 1.000 (my ~[[[999 ~hatsyx-possum] ["fidgets" %issued now.bowl now.bowl .1.35 %usd]]]) (my ~[[[999 ~hatsyx-possum] ["zidgets" %overdue now.bowl now.bowl .1.85 %usd]]])]
