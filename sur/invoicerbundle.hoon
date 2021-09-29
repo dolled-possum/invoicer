@@ -5,16 +5,16 @@
 ::  #TODO Figure this out.
 ::
 ::  Anyway, here's the state structure for invoicer: an invoice counter to 
-::  increment, and two maps of invoices identified by a unique combination
-::  of a @ud and a ship (either the one the invoice is being sent to, or
-::  the one it came from (in the sent and receipt maps respectively)).  I
+::  increment, and two maps:  one of pairs of a recipient ship and an invoice
+::  I've sent, identified by a @ud, and one of invoices I've received 
+::  identified by a unique combination of a @ud and a sending ship.  I
 ::  expect to eventually add archive maps of each as well for soft deletes.
 ::
-::  Note:  The map of sent invoices is canonical, the source of truth.  The
-::  sender can make modifications and will send updates about those
-::  modifications to the receiver.  The map of received invoice copies is just
-::  that: a bunch of local copies of the sender's canonical source invoices.
-::  I had originally considered just keeping a list of the map keys here, 
+::  Note:  The map of sent invoices (with their recipients) is canonical, the
+::  source of truth.  The sender can make modifications and will send updates 
+::  about those modifications to the receiver.  The map of received invoices is
+::  just a bunch of local copies of the sender's canonical source invoices. I
+::  had originally considered just keeping a list of the map keys here, 
 ::  requiring the dynamic fetching of the actual current invoice data from the
 ::  senders, but ultimately I went for the convenience of having a local copy
 ::  to sort, filter, etc..  I might add functionality to allow refreshes from
@@ -22,7 +22,10 @@
 ::  this in the context of auto-retry and ordering and such.
 +$  zerostate  [nextinvoicenumber=@ud invoicesivesent=(map @ud invoiceplusrecipient) invoicesivereceived=(map [@ud @p] invoice)]
 ::
+::  My invoices I generate are uniquely identified by a number, and are linked 
+::  to a recipient ship.
 +$  invoiceplusrecipient  [recipient=@p inv=invoice]
+::
 ::  Invoices themselves are starting out pretty simple, but will get bulked
 ::  up with time, with the intent of adding individual line items and taxes.
 ::  #TODO Add that stuff.

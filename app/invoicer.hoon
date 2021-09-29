@@ -48,8 +48,9 @@
 ::  can be tested to help achieve sensible migration paths for existing state
 ::  data.  Of course, I'm not doing anything sensible here, but am just 
 ::  completely ignoring the prior state once I confirm it's in the one (and 
-::  only) versioned-state that exists, and creating a brand new state out of
-::  nothing.  Eventually this will become something meant for actual
+::  only) versioned-state that exists (which I don't even have to do because
+::  I'm just ignoring it, but will use later) and creating a brand new state 
+::  out of nothing.  Eventually this will become something meant for actual
 ::  long term use.  No cards in this arm's returned quip.
 ++  on-load
   |=  old-state=vase
@@ -116,25 +117,30 @@
     :_  state
     ~
   ::
-  ::  This action creates an invoice in your own invoicesivesent, and also pokes
-  ::  a corresponding one in the target ship's invoicesivereceived.  And for
-  ::  good measure, it increments the nextinvoicenumber counter.
+  ::  This action creates an invoice in your own invoicesivesent, and also 
+  ::  pokes a corresponding one in the target ship's invoicesivereceived.  And 
+  ::  for good measure, it increments the nextinvoicenumber counter to the next
+  ::  available key.
   ::
   ::  dojo example: > :invoicer &invoicer-action [%create-invoice ~zod "kerosene" %issued now now .9.35 %usd]
       %create-invoice
     ?>  (team:title our.bowl src.bowl)
     ~&  >  'inside helperc, %create-invoice'
-    =/  originalcounter  nextinvoicenumber.state
     ::  Test to ensure the key doesn't already exist, don't want to overwrite anything.
-    ?<  (~(has by invoicesivesent.state) originalcounter)
+    ?<  (~(has by invoicesivesent.state) nextinvoicenumber.state)
+    =/  originalcounter  nextinvoicenumber.state
+    =/  nextavailable  +(originalcounter)
+    |-
+    ?:  (~(has by invoicesivesent.state) nextavailable)
+      $(nextavailable +(nextavailable))
     =.  invoicesivesent.state  (~(put by invoicesivesent.state) [originalcounter recipientkeyship.action newinvoice.action])
-    =.  nextinvoicenumber.state  +(originalcounter)
+    =.  nextinvoicenumber.state  nextavailable
     :_  state
     ~[[%pass /invoice-wire %agent [recipientkeyship.action %invoicer] %poke %invoicer-action !>([%upsert-invoice-copy originalcounter newinvoice.action])]]
   ::
-  ::  If a ship needs to update an existing invoice it's sent, this is the
+  ::  If a ship needs to update an invoice it's already sent, this is the
   ::  action.  By specifying the key and the new version of the invoice, it'll
-  ::  update it in your own invoicesivesent, and also poke it in the target
+  ::  update it in your own invoicesivesent, and also poke it into the recipient
   ::  ship's invoicesivereceived.
   ::
   ::  dojo example: > :invoicer &invoicer-action [%update-invoice 999 "fudgets" %issued now now .9.35 %usd]
@@ -144,10 +150,10 @@
     ::  Test to ensure the key does already exist, don't want to create anything new.
     ?>  (~(has by invoicesivesent.state) existingkeynum.action)
     =/  retrievedinvoiceplusrecipient=invoiceplusrecipient.inb  (~(got by invoicesivesent.state) existingkeynum.action)
-    =/  targetship=@p  recipient.retrievedinvoiceplusrecipient
-    =.  invoicesivesent.state  (~(put by invoicesivesent.state) [existingkeynum.action targetship newinvoice.action])
+    =/  recipientship=@p  recipient.retrievedinvoiceplusrecipient
+    =.  invoicesivesent.state  (~(put by invoicesivesent.state) [existingkeynum.action recipientship newinvoice.action])
     :_  state
-    ~[[%pass /invoice-wire %agent [targetship %invoicer] %poke %invoicer-action !>([%upsert-invoice-copy existingkeynum.action newinvoice.action])]]
+    ~[[%pass /invoice-wire %agent [recipientship %invoicer] %poke %invoicer-action !>([%upsert-invoice-copy existingkeynum.action newinvoice.action])]]
   ::
   ::  Here's the action that gets remotely poked to make a corresponding entry
   ::  in invoicesivereceived when a sending ship creates or updates an
@@ -163,7 +169,7 @@
   ::  This action processes a manual poke acknowledgment that the ship that 
   ::  received the invoice creation or update did in fact receive it.
   ::  Ultimately, this can/will be used to update the status or an ack flag on
-  ::  the canonical copy of the invoice.
+  ::  the canonical copy of the invoice held by the sender.
   ::
   ::  Don't run this from the dojo.  It's meant to be poked remotely via card.
       %upsert-ack
@@ -173,9 +179,10 @@
     ~
   ::
   ::  Retrieving an invoice by key from either the map of invoices you've sent
-  ::  or the map of invoices you've received.  This really needs sort, filter,
-  ::  and pagination capabilities.  #TODO Add them.
+  ::  or the map of invoices you've received.  These really should feed into a
+  ::  door that has sort, filter, & pagination capabilities.  #TODO Add them.
   ::
+  ::  (technically, _this_ one retrieves an "invoiceplusrecipient", not an invoice)
   ::  dojo example: > :invoicer &invoicer-action [%retrieve-invoice-from-sent 999]
       %retrieve-invoice-from-sent 
     ?>  (team:title our.bowl src.bowl)
