@@ -80,6 +80,12 @@
   |^
   =^  cards  state
   ?+  mark  (on-poke:default mark vase)
+      %noun
+          ?+    q.vase  (on-poke:default mark vase)
+          %print-state    
+                ~&  >>  state
+                ~&  >>>  bowl  `state
+          ==
       %invoicer-action
         ~&  >>>  !<(action:inb vase)
         (handle-action !<(action:inb vase))
@@ -140,8 +146,6 @@
       %update-inv
     ?>  (team:title our.bowl src.bowl)
     ~&  >  'inside %update-inv'
-    ::  Test to ensure the key does already exist, don't want to create anything new.
-    ?>  (~(has by invsent.state) num.action)
     =/  shipandinv=shipinv.inb  
       (~(got by invsent.state) num.action)
     =/  ship=@p  dest.shipandinv
@@ -154,6 +158,31 @@
       (~(put by invsent.state) [num.action ship newinv.action])
     :_  state
     ~[[%pass mypath %agent [ship %invoicer] %poke %invoicer-action !>([%upsert-invrecd num.action newinv.action])]]
+  ::
+  ::  If a ship only needs to update the status of invoice it's already sent,
+  ::  this is a convenience method that only requires the invoice number and
+  ::  the new status, rather than values for each field in the invoice.  This
+  ::  action actually just wraps the more general %update-inv by using the 
+  ::  invoice number to fetch and copy the original details but use the new 
+  ::  status, then rerunning this handle-action arm with the updated invoice
+  ::  as an %update-inv action. 
+  ::
+  ::  dojo example: > :invoicer &invoicer-action [%update-inv-status 999 %paid]
+      %update-inv-status
+    ?>  (team:title our.bowl src.bowl)
+    ~&  >  'inside %update-inv-status'
+    =/  shipandinv=shipinv.inb  
+      (~(got by invsent.state) num.action)
+    =/  originv=invoice.inb  inv.shipandinv
+    =/  updatedinv  
+    :*  description.originv 
+        status.action  ::  the new status from the action
+        created.originv 
+        due.originv 
+        amount.originv 
+        curr.originv
+      ==
+    $(action [%update-inv num.action updatedinv])
   ::
   ::  Here's the action that gets remotely poked to make a corresponding entry
   ::  in invrecd when a sending ship creates or updates an
@@ -209,7 +238,6 @@
   ==
   --
 ::  Handling the acks so we can eventually update status as verified received
-::  #TODO Incorporate this into status workflow.
 ++  on-agent
   |=  [=wire =sign:agent:gall]
   ^-  (quip card _this)
@@ -219,8 +247,18 @@
     =/  numb  `@ud`(slav %ud +<:wire)
     =/  ship  `@p`(slav %p +>-:wire)
     =/  stat  `@tas`(slav %tas +>+<:wire)
-    ~&  "{<stat>} {<numb>} {<-.sign>} by {<ship>}"  
-    `this
+    ?+  stat  
+      ~&  "{<stat>} {<numb>} {<-.sign>} by {<ship>}"  
+      `this
+    ::  We do something special if this is a poke acknowledgement for an
+    ::  invoice being set to %issued.  This causes the status to update here
+    ::  on the sender, noting that the sender now knows the %issued invoice has
+    ::  been received by the recipient (and thus the sender updates it to 
+    ::  %received).  It does so via self-poke.
+    %issued  ~&  "special handling, setting status to note invoice was %received"
+    :_  this
+    ~[[%pass /inv-self-poke %agent [our.bowl %invoicer] %poke %invoicer-action !>([%update-inv-status numb %received])]]
+    ==
     (on-agent:default wire sign)
   ==
 ::  Whole bunch of defaultin' goin' on...

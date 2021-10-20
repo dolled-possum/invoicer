@@ -48,6 +48,7 @@
       [%del-from-invrecd num=@ud ship=@p]
       [%create-inv recship=@p newinv=invoice]
       [%update-inv num=@ud newinv=invoice]
+      [%update-inv-status num=@ud status=invstatus]
       [%upsert-invrecd num=@ud newinv=invoice]
     ==
 --
